@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>CFBundleName</key>
+  <string>Incident Reporter</string>
+
+  <!-- Camera access for taking photos/videos -->
+  <key>NSCameraUsageDescription</key>
+  <string>App needs camera access to attach photos and videos to incident reports.</string>
+
+  <!-- Photo library access to pick existing media -->
+  <key>NSPhotoLibraryUsageDescription</key>
+  <string>App needs photo library access to attach existing media to reports.</string>
+
+  <!-- Location (when-in-use) to tag reports with precise GPS coordinates -->
+  <key>NSLocationWhenInUseUsageDescription</key>
+  <string>App needs location access to tag incident reports with precise GPS coordinates for faster response.</string>
+
+  <!-- Microphone for video recording with audio -->
+  <key>NSMicrophoneUsageDescription</key>
+  <string>App needs microphone access when recording video with sound.</string>
+
+</dict>
+</plist>
