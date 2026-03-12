@@ -16,6 +16,7 @@ class ReportForm extends StatefulWidget {
 class _ReportFormState extends State<ReportForm> {
   final _formKey = GlobalKey<FormState>();
   final ImagePicker _picker = ImagePicker();
+  final DateTime _createdAt = DateTime.now();
   static const _categories = [
     'Emergency',
     'Crime',
@@ -41,17 +42,38 @@ class _ReportFormState extends State<ReportForm> {
   double? _lon;
   bool _resolved = false;
 
+  String get _urgencyLabel {
+    return _urgencyOptions
+        .firstWhere((u) => u['value'] == _urgency)['label'] as String;
+  }
+
+  String get _locationLabel {
+    return '${_lat?.toStringAsFixed(5) ?? 'unknown'}, ${_lon?.toStringAsFixed(5) ?? 'unknown'}';
+  }
+
+  String get _timestampLabel {
+    final d = _createdAt;
+    String two(int n) => n.toString().padLeft(2, '0');
+    return '${d.year}-${two(d.month)}-${two(d.day)} ${two(d.hour)}:${two(d.minute)}:${two(d.second)}';
+  }
+
+  void _showMessage(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+  }
+
   Future<bool> _ensureMediaPermissions() async {
     final cameraOk = await PermissionService.requestCameraPermission();
     if (!mounted) return false;
     if (!cameraOk) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Camera permission denied')));
+      _showMessage('Camera permission denied');
       return false;
     }
     final storageOk = await PermissionService.requestStoragePermission();
     if (!mounted) return false;
     if (!storageOk) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Storage/photo permission denied')));
+      _showMessage('Storage/photo permission denied');
       return false;
     }
     return true;
@@ -63,7 +85,8 @@ class _ReportFormState extends State<ReportForm> {
       source: ImageSource.gallery,
       imageQuality: 75,
     );
-    if (file != null) setState(() => _photoEvidence.add(file.path));
+    if (!mounted || file == null) return;
+    setState(() => _photoEvidence.add(file.path));
   }
 
   Future<void> _addVideo() async {
@@ -72,7 +95,8 @@ class _ReportFormState extends State<ReportForm> {
       source: ImageSource.gallery,
       maxDuration: const Duration(minutes: 3),
     );
-    if (file != null) setState(() => _videoEvidence.add(file.path));
+    if (!mounted || file == null) return;
+    setState(() => _videoEvidence.add(file.path));
   }
 
   Future<void> _captureLocation() async {
@@ -97,6 +121,7 @@ class _ReportFormState extends State<ReportForm> {
       videoPaths: _videoEvidence,
       latitude: _lat,
       longitude: _lon,
+      timestamp: _createdAt,
       resolved: _resolved,
     );
     await StorageService.saveReport(r);
@@ -110,6 +135,71 @@ class _ReportFormState extends State<ReportForm> {
     _captureLocation();
   }
 
+  Widget _buildCategorySection(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Category', style: Theme.of(context).textTheme.titleMedium),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: _categories.map((category) {
+            return ChoiceChip(
+              label: Text(category),
+              selected: _category == category,
+              onSelected: (_) => setState(() => _category = category),
+            );
+          }).toList(),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildUrgencySection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Urgency: $_urgencyLabel'),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: _urgencyOptions.map((option) {
+            final selected = _urgency == option['value'];
+            return ChoiceChip(
+              label: Text(option['label'] as String),
+              selected: selected,
+              onSelected: (_) => setState(() => _urgency = option['value'] as int),
+            );
+          }).toList(),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildEvidenceList({
+    required String title,
+    required List<String> items,
+    required IconData icon,
+  }) {
+    if (items.isEmpty) return const SizedBox.shrink();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('$title (${items.length})'),
+        const SizedBox(height: 4),
+        ...items.map((path) => ListTile(
+              dense: true,
+              contentPadding: EdgeInsets.zero,
+              leading: Icon(icon, size: 20),
+              title: Text(path.split('/').last),
+            )),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -120,39 +210,23 @@ class _ReportFormState extends State<ReportForm> {
           key: _formKey,
           child: ListView(
             children: [
-              Text('Category', style: Theme.of(context).textTheme.titleMedium),
+              _buildCategorySection(context),
               const SizedBox(height: 8),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: _categories.map((category) {
-                  return ChoiceChip(
-                    label: Text(category),
-                    selected: _category == category,
-                    onSelected: (_) => setState(() => _category = category),
-                  );
-                }).toList(),
-              ),
-              SizedBox(height: 8),
-              Text('Urgency: ${_urgencyOptions.firstWhere((u) => u['value'] == _urgency)['label']}'),
+              _buildUrgencySection(),
               const SizedBox(height: 8),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: _urgencyOptions.map((option) {
-                  final selected = _urgency == option['value'];
-                  return ChoiceChip(
-                    label: Text(option['label'] as String),
-                    selected: selected,
-                    onSelected: (_) => setState(() => _urgency = option['value'] as int),
-                  );
-                }).toList(),
-              ),
               TextFormField(
                 decoration: InputDecoration(labelText: 'Description'),
                 maxLines: 4,
                 onSaved: (v) => _description = v ?? '',
                 validator: (v) => (v == null || v.trim().isEmpty) ? 'Provide a description' : null,
+              ),
+              const SizedBox(height: 8),
+              ListTile(
+                dense: true,
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.access_time),
+                title: const Text('Timestamp'),
+                subtitle: Text(_timestampLabel),
               ),
               SwitchListTile.adaptive(
                 contentPadding: EdgeInsets.zero,
@@ -161,63 +235,50 @@ class _ReportFormState extends State<ReportForm> {
                 value: _resolved,
                 onChanged: (v) => setState(() => _resolved = v),
               ),
-              SizedBox(height: 8),
-              Text('Location: ${_lat?.toStringAsFixed(5) ?? 'unknown'}, ${_lon?.toStringAsFixed(5) ?? 'unknown'}'),
+              const SizedBox(height: 8),
+              Text('Location: $_locationLabel'),
               TextButton.icon(
-                icon: Icon(Icons.location_on),
-                label: Text('Refresh Location'),
+                icon: const Icon(Icons.location_on),
+                label: const Text('Refresh Location'),
                 onPressed: _captureLocation,
               ),
-              SizedBox(height: 8),
+              const SizedBox(height: 8),
               Text('Evidence', style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: 4),
+              const Text('Photo Upload and Video Documents'),
               const SizedBox(height: 8),
               Wrap(
                 spacing: 12,
                 runSpacing: 8,
                 children: [
                   ElevatedButton.icon(
-                    icon: Icon(Icons.photo_library_outlined),
-                    label: Text('Upload Photo'),
+                    icon: const Icon(Icons.photo_library_outlined),
+                    label: const Text('Upload Photo'),
                     onPressed: _addPhoto,
                   ),
                   ElevatedButton.icon(
-                    icon: Icon(Icons.video_library_outlined),
-                    label: Text('Upload Video'),
+                    icon: const Icon(Icons.video_library_outlined),
+                    label: const Text('Upload Video'),
                     onPressed: _addVideo,
                   ),
                 ],
               ),
               const SizedBox(height: 8),
-              if (_photoEvidence.isNotEmpty)
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Photos (${_photoEvidence.length})'),
-                    const SizedBox(height: 4),
-                    ..._photoEvidence.map((p) => ListTile(
-                          dense: true,
-                          contentPadding: EdgeInsets.zero,
-                          leading: Icon(Icons.image, size: 20),
-                          title: Text(p.split('/').last),
-                        )),
-                  ],
-                ),
-              if (_videoEvidence.isNotEmpty)
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Videos (${_videoEvidence.length})'),
-                    const SizedBox(height: 4),
-                    ..._videoEvidence.map((p) => ListTile(
-                          dense: true,
-                          contentPadding: EdgeInsets.zero,
-                          leading: Icon(Icons.videocam, size: 20),
-                          title: Text(p.split('/').last),
-                        )),
-                  ],
-                ),
-              SizedBox(height: 16),
-              ElevatedButton(onPressed: _submit, child: Text('Submit Report'))
+              _buildEvidenceList(
+                title: 'Photos',
+                items: _photoEvidence,
+                icon: Icons.image,
+              ),
+              _buildEvidenceList(
+                title: 'Videos',
+                items: _videoEvidence,
+                icon: Icons.videocam,
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: _submit,
+                child: const Text('Submit Report'),
+              ),
             ],
           ),
         ),
