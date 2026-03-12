@@ -1,48 +1,53 @@
-# Incident Reporter (Flutter)
+# IncidentReport
 
-A minimal Flutter app to report incidents with GPS location, urgency categorization, photos, and local encrypted storage.
+This repository contains two incident-reporting clients plus a simple Node server:
+
+1. Flutter app in `DartFlutter/`
+2. React/Expo-style web/mobile code in the root `src/` app
+3. Example backend in `server/`
+
+## Flutter App (`DartFlutter/`)
 
 Run:
 
-1. Ensure Flutter is installed and configured for your platform.
-2. From the project directory run:
-
 ```bash
+cd DartFlutter
 flutter pub get
-flutter run
+flutter run -d chrome
 ```
-
-Android permissions: add `ACCESS_FINE_LOCATION`, `ACCESS_COARSE_LOCATION`, `CAMERA`, and file permissions to `android/app/src/main/AndroidManifest.xml` as needed.
 
 Notes:
-- Reports are stored locally in an encrypted Hive box. For production, implement secure backend upload and stronger privacy controls.
-- Prioritization: reports are ordered by `urgency` (3 highest).
+- Reports are saved locally in an encrypted Hive box.
+- Location/media permissions are requested at runtime.
 
-Troubleshooting (Windows)
+## React/Expo App (root)
 
-- Install Flutter: download the latest stable SDK from https://flutter.dev and extract it (for example to `C:\src\flutter`).
-- Add Flutter to PATH: add `%USERPROFILE%\src\flutter\bin` (or your install path) to the system `PATH`, then restart your terminal.
-- Verify setup: open a new PowerShell or cmd and run:
+Run:
 
 ```bash
-flutter doctor
+npm install
+npm run dev
 ```
 
-	- Resolve any issues `flutter doctor` reports (install Android Studio for Android tooling and accept Android licenses with `flutter doctor --android-licenses`).
-	- Ensure an Android device/emulator is available; enable USB debugging on a physical device.
+Notes:
+- Uses location/media features from the app services and components in `src/`.
+- Set backend `API_URL` in `src/services/api.js` if needed.
 
-- Common fixes if `flutter` is not recognized:
-	- Confirm the `bin` folder is on PATH and you restarted the terminal.
-	- Use the full path to the `flutter` executable to test: `C:\src\flutter\bin\flutter.bat doctor`.
+## Example Server (`server/`)
 
-- Quick run commands from project root:
+Run:
 
 ```bash
-flutter pub get
-flutter devices        # lists available devices/emulators
-flutter run -d <id>   # run on selected device
+cd server
+npm install
+npm start
 ```
 
-- If you see permission or build errors on Android, open the Android project in Android Studio and allow Gradle/SDK updates, or run `flutter doctor` to follow specific suggestions.
+Server endpoint:
+- `POST /reports`
 
-If you want, I can also add an in-app permission helper and runtime prompts to the codebase.
+## Quick Troubleshooting
+
+1. Verify Flutter setup with `flutter doctor`.
+2. Verify Node setup with `node -v` and `npm -v`.
+3. If `flutter` is not recognized, add Flutter `bin` to PATH and restart the terminal.
